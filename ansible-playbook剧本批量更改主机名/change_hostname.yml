@@ -1,0 +1,12 @@
+---
+- hosts: "{{ hosts }}"
+  gather_facts: yes
+  remote_user: root
+  tasks:
+    - name: show hostname
+      shell: hostname
+    - name: show ip
+      command: ip a
+    - hostname: name=Allen-{{ ansible_default_ipv4.address.split('.')[-1] }}
+      tags:
+        - changhostname
