@@ -1,0 +1,32 @@
+---
+- hosts: "{{ hosts }}"
+  gather_facts: no
+  vars:
+    old_nginx_dir: /usr/local/nginx
+    src: /usr/local/src
+    version: nginx-1.12.2
+  remote_user: root
+  tasks:
+    - name: yum install devel
+      yum: name={{ item }} state=present
+      with_items:
+        - gcc
+        - gcc-c++
+        - openssl
+        - openssl-devel
+        - zlib
+        - zlib-devel
+        - wget
+    - name: down {{ version }} and unzip
+      shell: cd {{ src }} && wget http://nginx.org/download/{{ version }}.tar.gz >>/dev/null && tar -xf {{ version }}.tar.gz
+    - name: get old vars
+      shell: "{{ old_nginx_dir }}/sbin/nginx -V 2>&1|grep  configure|cut -d : -f2"
+      register: old_argv
+    - name: install nginx 
+      shell: cd {{ src }}/{{ version }} && ./configure {{ old_argv.stdout }} && make >>/dev/null
+    - name: mv old nginx
+      shell: mv -f {{ old_nginx_dir }}/sbin/nginx{,.bak}
+    - name: copy nginx bin to new nginx bin
+      shell: cp -a {{src}}/{{version}}/objs/nginx {{ old_nginx_dir }}/sbin/nginx
+    - name: update process
+      shell: cd {{src}}/{{version}} && make upgrade >>/dev/null
