@@ -1,0 +1,53 @@
+---
+- hosts: "{{ hosts }}"
+  remote_user: root
+  gather_facts: yes    #Facts 是用来采集目标系统信息的，具体是用setup模块来采集得 yes为开启
+  vars:
+    dir: /usr/local/src
+    Server_ip: 192.168.0.1
+    version: zabbix-3.2.11
+    Client_ip: "{{ ansible_default_ipv4['address'] }}"
+    OS_family: "{{ ansible_os_family }}"
+    Major: "{{ ansible_distribution_major_version }}"
+    #client_ip: "{{ ansible_eth1['ipv4']['address'] }}" 注意，引用变量时，如果是指定的一张网卡，后面可能需要加上中括号
+  tasks:
+    - name: yum depend packages
+      yum: name={{ item }} state=latest
+      with_items:
+        - make
+        - cmake
+        - gcc
+        - gcc-c++
+        - openssl
+        - openssl-devel
+        - curl
+        - curl-devel
+        - zlib
+        - zlib-devel
+        - net-snmp
+        - net-snmp-devel
+        - libssh2
+        - libssh2-devel
+      when: OS_family == "RedHat" and Major |int == 6  #判断当系统为RedHat版本，版本号为6
+    - name: add zabbix group and user
+      shell: groupadd zabbix && useradd zabbix -s /sbin/nologin -g zabbix -M
+      ignore_errors: yes
+    - name: down {{ version }}
+      shell: cd {{ dir }};wget https://jaist.dl.sourceforge.net/project/zabbix/ZABBIX%20Latest%20Stable/3.2.11/{{ version }}.tar.gz >>/dev/null
+    - name: unzip {{ version }}.tar.gz
+      shell: cd {{ dir }};tar -zxf {{ version }}.tar.gz
+    - name: configure
+      shell: cd {{ dir }}/{{ version }};./configure --prefix=/usr/local/zabbix --with-net-snmp --with-libcurl --enable-agent --with-libxml2>>/dev/null;make install>>/dev/null
+    - name: copy start scripts
+      shell: cp {{ dir }}/{{ version }}/misc/init.d/fedora/core/zabbix_agentd /etc/init.d/;chmod 700 /etc/init.d/zabbix_agentd
+    - name: config files
+      shell: |
+        sed -i 's/BASEDIR=\/usr\/local/BASEDIR=\/usr\/local\/zabbix/g' /etc/init.d/zabbix_agentd
+        sed -i 's/Server=127.0.0.1/Server={{ Server_ip }}/g' /usr/local/zabbix/etc/zabbix_agentd.conf
+        sed -i 's/ServerActive=127.0.0.1/ServerActive={{ Server_ip }}/g' /usr/local/zabbix/etc/zabbix_agentd.conf
+        sed -i 's/Hostname=Zabbix server/Hostname={{ Client_ip }}/g' /usr/local/zabbix/etc/zabbix_agentd.conf
+        #sed -i 's@# Include=/usr/local/etc/zabbix_agentd.conf.d/\*.conf@Include=/usr/local/etc/zabbix_agentd.conf.d/\*.conf@g' /usr/local/zabbix/etc/zabbix_agentd.conf
+        sed -i 's@# UnsafeUserParameters=0@UnsafeUserParameters=1@g' /usr/local/zabbix/etc/zabbix_agentd.conf
+        sed -i "s#LogFile\=\/tmp\/zabbix\_agentd\.log#LogFile\=\/var\/log\/zabbix\_agentd\.log#g" /usr/local/zabbix/etc/zabbix_agentd.conf
+    - name: start zabbix_agentd
+      shell: chkconfig zabbix_agentd on;chkconfig --add zabbix_agentd;/etc/init.d/zabbix_agentd start

@@ -1,0 +1,10 @@
+执行：
+用-e指定主机组，这里指定主机组nginx
+ansible-playbook zabbix_agent_install_v2.yml  -e "hosts=nginx"
+
+
+剧本中用了很多变量，如果agent版本改变，可以更改一下变量而不用全部更改剧本
+
+
+zabbix-3.2.11.tar.gz下载地址：
+https://jaist.dl.sourceforge.net/project/zabbix/ZABBIX%20Latest%20Stable/3.2.11/zabbix-3.2.11.tar.gz
