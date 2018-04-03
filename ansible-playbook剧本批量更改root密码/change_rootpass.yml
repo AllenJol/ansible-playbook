@@ -1,0 +1,11 @@
+---
+  - hosts: "{{ hosts }}"
+    gather_facts: yes
+    remote_user: root
+    tasks:
+    - name: change passwd for root
+      shell: echo '{{ item.password }}' | passwd --stdin root
+      when: ansible_eth0.ipv4.address == '{{ item.ip }}'
+      with_items:
+       - { ip: "192.168.20.110", password: 'allen1101..' }
+       #- { ip: "192.168.1.106", password: 'allen1101..' }
