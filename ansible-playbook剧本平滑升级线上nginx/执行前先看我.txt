@@ -1,0 +1,4 @@
+
+在命令行执行剧本的时候，需要手动指定主机组，如指定web组：
+
+ansible-playbook nginx_update.yml  -e "hosts=web" 
