@@ -1,0 +1,39 @@
+---
+- hosts: "{{ hosts }}"
+  remote_user: root
+  gather_facts: yes
+  vars:
+    dir: /usr/local/src
+    nginx_dir: /usr/local/nginx
+    pcre_version: pcre-8.42
+    pcre_down_url: https://jaist.dl.sourceforge.net/project/pcre/pcre/8.42/{{ pcre_version }}.tar.gz
+    ngx_cache_version: ngx_cache_purge-2.3
+    ngx_cache_down_url: http://labs.frickle.com/files/{{ ngx_cache_version }}.tar.gz
+    ngx_version: nginx-1.13.11
+    ngx_down_url: http://nginx.org/download/{{ ngx_version }}.tar.gz
+  tasks: 
+    - name: install require packages
+      yum: name={{ item }} state=present
+      with_items:
+        - gcc
+        - gcc-c++
+        - openssl
+        - openssl-devel
+        - zlib
+        - zlib-devel
+        - wget
+        - git
+    - name: down {{ pcre_version }} && configure
+      shell: |
+        cd {{ dir }};wget {{ pcre_down_url }} >>/dev/null;tar -zxf {{ pcre_version }}.tar.gz
+        cd {{ pcre_version }};./configure >>/dev/null;make >>/dev/null;make install >>/dev/null
+    - name: down {{ ngx_cache_version }} && configure
+      shell: cd {{ dir }};wget {{ ngx_cache_down_url }};tar -zxf {{ ngx_cache_version }}.tar.gz
+    - name: down {{ ngx_version }}
+      shell: |
+        cd {{ dir }};wget {{ ngx_down_url }};tar -zxf {{ ngx_version }}.tar.gz
+        cd {{ ngx_version }};./configure --prefix=/usr/local/nginx --with-http_stub_status_module --with-http_ssl_module --with-http_gzip_static_module --with-pcre=/usr/local/src/pcre-8.42 --add-module=/usr/local/src/ngx_cache_purge-2.3 >>/dev/null
+    - name: configure nginx
+      shell: cd {{ dir }};cd {{ ngx_version }};make >>/dev/null;make install >>/dev/null
+    - name: start nginx
+      shell: /usr/local/nginx/sbin/nginx
